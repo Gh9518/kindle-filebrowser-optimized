@@ -1,6 +1,6 @@
 # Kindle 的 filebrowser 优化 2.0 版本 / Kindle filebrowser optimization 2.0
 
-基于 [filebrowser](https://github.com/filebrowser/filebrowser) 的 Kindle（KUAL）网页文件管理器插件。核心程序已内置打包（v2.63.23，armv7），开箱即用，并支持在线更新。
+基于 [filebrowser](https://github.com/filebrowser/filebrowser) 的 Kindle（KUAL）网页文件管理器插件，可在手机、平板或电脑的浏览器中管理 Kindle 里的文件。本插件的原始方案与思路源自书伴（BookFere）文章 [《File Browser：便捷地管理 Kindle 中的文件》](https://bookfere.com/post/823.html)。核心程序已内置打包（v2.63.23，armv7），开箱即用，并支持在线更新。
 
 > File Browser 已于 2026-09-01 归档，v2.63.23 为最后一个版本，后续不再有更新。
 
@@ -68,10 +68,9 @@
 
 ## 致谢 / Acknowledgements
 
-- 书伴（BookFere）文章：[《Kindle Text Editor 文本编辑器》](https://bookfere.com/post/717.html) —— 本项目的思路与代码参考来源，特此致谢。
-- N31weLt 的 [Kindle Text Editor (KTE)](https://zhuanlan.zhihu.com/p/38893909) 项目。
-- [filebrowser](https://github.com/filebrowser/filebrowser) 核心程序。
-- KUAL / MRPI 框架及书伴越狱教程。
+- 书伴（BookFere）文章：[《File Browser：便捷地管理 Kindle 中的文件》](https://bookfere.com/post/823.html) —— 本插件（由 Sparkle 投稿）的原始介绍与思路来源，特此致谢。
+- 核心程序 [filebrowser](https://github.com/filebrowser/filebrowser)（作者 Henrique Dias，现由 Oleg Lobanov 维护；官方文档 <https://filebrowser.org/>）。
+- 书伴（BookFere）的 KUAL / MRPI 越狱与插件框架教程。
 
 ---
 

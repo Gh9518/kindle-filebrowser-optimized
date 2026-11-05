@@ -7,6 +7,7 @@
 - 修复「自动退出」需点两次才生效的竞态：重建 `menu.json` 提前到屏显之前，一次点击即生效。
 - 启动 / 关闭执行完返回 Kindle 桌面；本机 IP 在桌面持久显示（eips 位置 8,1）。
 - 重写中英文 README 与更新日志；独立 GitHub 仓库发布。
+- 致谢与参考：书伴（BookFere）文章 [《File Browser：便捷地管理 Kindle 中的文件》](https://bookfere.com/post/823.html)（本插件原始思路来源，由 Sparkle 投稿）；核心程序 filebrowser（作者 Henrique Dias，现由 Oleg Lobanov 维护）。
 
 ## v1.x 摘要 / v1.x summary
 
