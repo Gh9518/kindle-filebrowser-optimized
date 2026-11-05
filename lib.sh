@@ -21,8 +21,8 @@ status() {
 }
 
 # 在屏幕显示本机 IP（位置可改下方 IP_ROW / IP_COL；改这里即全局生效）
-IP_ROW=8   # 第几行显示（越大越靠下）
-IP_COL=1   # 第几列显示（越大越靠右）
+IP_ROW=10  # 第几行显示（越大越靠下）
+IP_COL=2   # 第几列显示（越大越靠右）
 show_ip() {
 	eips $IP_ROW $IP_COL "IP: $(ip_addr)"
 }
@@ -43,9 +43,10 @@ wireless_state() {
 	[ "$st" = "0" ] && echo 0 || echo 1
 }
 
-# 系统语言判断：中文系统(含 zh)显示中文菜单，其它显示英文菜单
+# 系统语言判断：默认显示中文菜单；LANG 文件可手动强制为英文
 # 读取顺序：1) 插件目录 LANG 文件可手动强制（写 en→英文 / zh→中文）；
-#           2) 否则按 Kindle UI 语言自动（含 zh 即中文，其它英文）
+#           2) 否则按 Kindle UI 语言自动（含 zh 即中文，明确为 en 才英文）；
+#           3) 未识别系统语言时默认中文
 sys_lang() {
 	[ -f LANG ] && { read -r o < LANG; case "$o" in
 		*[Zz][Hh]*) echo zh; return ;;
@@ -54,7 +55,8 @@ sys_lang() {
 	l=$(lipc-get-prop com.lab126.winmgr lang 2>/dev/null)
 	case "$l" in
 		*[Zz][Hh]*) echo zh ;;
-		*) echo en ;;
+		*[Ee][Nn]*) echo en ;;
+		*) echo zh ;;
 	esac
 }
 
