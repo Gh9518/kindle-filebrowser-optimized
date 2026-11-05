@@ -21,8 +21,8 @@ status() {
 }
 
 # 在屏幕显示本机 IP（位置可改下方 IP_ROW / IP_COL；改这里即全局生效）
-IP_ROW=10  # 第几行显示（越大越靠下）
-IP_COL=2   # 第几列显示（越大越靠右）
+IP_ROW=12  # 第几行显示（越大越靠下）
+IP_COL=3   # 第几列显示（越大越靠右）
 show_ip() {
 	eips $IP_ROW $IP_COL "IP: $(ip_addr)"
 }

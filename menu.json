@@ -1,12 +1,28 @@
 {
 	"items": [
 		{
-			"name": "选择语言 / Select language",
+			"name": "网页文件管理器2",
 			"priority": -1,
 			"items": [
-				{ "name": "中文", "priority": 1, "action": "./setlang.sh zh", "param": "", "exitmenu": false, "refresh": true },
-				{ "name": "English", "priority": 2, "action": "./setlang.sh en", "param": "", "exitmenu": false, "refresh": true }
-			]
-		}
-	]
+			{ "name": "启动", "priority": 1, "action": "./start.sh", "param": "" }
+			,
+			{ "name": "关闭", "priority": 2, "action": "./stop.sh", "param": "" }
+			,
+			{ "name": "自动退出: 05分", "priority": 3, "items": [
+
+				{ "name": "  从不", "priority": 1, "action": "./timeout.sh 0 从不", "param": "", "exitmenu": false, "refresh": true },
+				{ "name": "✓ 05分", "priority": 1, "action": "./timeout.sh 300 05分", "param": "", "exitmenu": false, "refresh": true },
+				{ "name": "  15分", "priority": 1, "action": "./timeout.sh 900 15分", "param": "", "exitmenu": false, "refresh": true },
+				{ "name": "  30分", "priority": 1, "action": "./timeout.sh 1800 30分", "param": "", "exitmenu": false, "refresh": true },
+				{ "name": "  60分", "priority": 1, "action": "./timeout.sh 3600 60分", "param": "", "exitmenu": false, "refresh": true }
+			] }
+			,
+			{ "name": "更新核心程序", "priority": 5, "action": "./update.sh check", "param": "", "exitmenu": false, "refresh": true }
+			,
+			{ "name": "本机IP: 未连接", "priority": 6, "action": "echo", "param": "", "exitmenu": false }
+			,
+			{ "name": "英语", "priority": 7, "action": "sh ./genmenu.sh --choose", "param": "", "exitmenu": false, "refresh": true }
+		]
+	}
+]
 }

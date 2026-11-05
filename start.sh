@@ -18,13 +18,29 @@ lipc-set-prop -i com.lab126.powerd preventScreenSaver 1 2>/dev/null
 # 核心程序缺失则先从 GitHub 下载（带屏幕进度）
 [ ! -x ./filebrowser ] && { status "Downloading core..."; sh ./update.sh do >/dev/null 2>&1; }
 
-# 开放 80 端口
+# 释放 80 端口：结束可能残留的旧 filebrowser 进程。
+# 这是“显示 IP 但浏览器无法访问”的常见原因——上次未正常关闭导致端口仍被占用，新进程起不来。
+for p in $(ps aux 2>/dev/null | grep [f]ilebrowser | awk '{print $2}'); do kill "$p" 2>/dev/null; done
+sleep 1
+
+# 开放 80 端口（Kindle 默认策略可能拦截入站连接，插入一条 ACCEPT 放行）
 iptables -I INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null
 
-# 后台启动 filebrowser（v2.63.23 用 serve 子命令）
+# 后台启动 filebrowser（v2.63.23 用 serve 子命令，--noauth 免登录）
 # setsid 完全脱离终端 + 日志写文件：避免 Kindle 联网/断线时后台进程向已关闭的
 # KUAL 管道写日志触发 SIGPIPE 而崩溃退出页面
+status "Starting..."; sleep 1
 detach ./filebrowser serve --noauth -a 0.0.0.0 -p 80 -r /mnt/us >/tmp/filebrowser.log 2>&1 </dev/null &
+
+# 等待端口监听（最多约 15 秒），用于排查“显示 IP 但无法访问”
+# /proc/net/tcp 中 local_address 形如 00000000:0050（端口 80 = 0x0050），state 0A = LISTEN
+ready=0; i=0
+while [ "$i" -lt 15 ]; do
+	if awk 'NR>1 && $2 ~ /:0050$/ && $4=="0A"{f=1} END{exit !f}' /proc/net/tcp 2>/dev/null; then
+		ready=1; break
+	fi
+	sleep 1; i=$((i+1))
+done
 
 # 自动退出计时（默认 5 分钟）：到点执行与“关闭”相同的逻辑
 AC=300; [ -f AUTOCLOSE ] && AC=$(cat AUTOCLOSE)
@@ -37,5 +53,15 @@ sh ./genmenu.sh >/dev/null 2>&1
 lipc-send-event com.lab126.hal powerButtonPressed
 sleep 2
 
-# 在桌面用 eips 显示本机IP（直写帧缓冲，持久可见；此处不重绘菜单，避免 KUAL 重新盖屏）
-show_ip
+# 在桌面用 eips 显示结果（eips 无中文字形，屏显提示统一用英文）
+if [ "$ready" = "1" ]; then
+	show_ip
+else
+	# 服务未监听：把 filebrowser 的真实报错显示到屏幕，便于定位“无法访问”的根因
+	# （如端口被占、二进制无法在本题设备执行、缺少运行环境等）
+	err=$(tail -n 1 /tmp/filebrowser.log 2>/dev/null | cut -c1-36)
+	[ -z "$err" ] && err="not started (empty log)"
+	status "Err: $err"
+	sleep 8; status ""
+	show_ip
+fi

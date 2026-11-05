@@ -1,7 +1,7 @@
 #!/bin/sh
 # 生成 KUAL 菜单 menu.json
-# 语言：默认中文；可手动切换英文（见 LANG 文件 / 菜单内“语言”项）
-# 首次运行（无 LANG 文件）或执行 `genmenu.sh --choose` 时，显示双语“选择语言”菜单
+# 语言：默认中文；可手动切换英文（菜单底部“英语/中文”项 / LANG 文件）
+# 执行 `genmenu.sh --choose` 时，显示双语“选择语言”菜单（菜单底部语言项点开即进入）
 # 要点：不带 exitmenu:false 的项，KUAL 执行完动作后默认返回 Kindle 桌面；
 #       仅“需留在菜单继续操作”的项（自动退出/更新子项、本机IP 显示）才写 exitmenu:false
 . ./lib.sh
@@ -9,8 +9,8 @@
 # 插件版本（用于菜单标题展示；改 VERSION 文件即可）
 VER=$(cat VERSION 2>/dev/null); [ -z "$VER" ] && VER="2.0"
 
-# 运行模式：--choose 强制语言选择；无 LANG 文件视为首次运行，也进入语言选择
-if [ "$1" = "--choose" ] || [ ! -f LANG ]; then
+# 运行模式：--choose 才进入语言选择；默认直接以中文呈现（无 LANG 文件时 sys_lang 也默认中文）
+if [ "$1" = "--choose" ]; then
 	MODE="choose"
 else
 	MODE="normal"
@@ -25,7 +25,7 @@ IP=$(ip_addr)
 
 # ---- 多语言文案 ----
 if [ "$L" = "zh" ]; then
-	TITLE="网页文件管理器 $VER";  START_N="启动";   CLOSE_N="关闭"
+	TITLE="网页文件管理器2";  START_N="启动";   CLOSE_N="关闭"
 	AUTOLBL="自动退出";      IPPRE="本机IP";  OFFLINE="未连接"
 	FLIGHT_T="当前为飞行模式，WiFi 已关闭"; FLIGHT_C="打开网络并继续"; FLIGHT_X="暂不启动"
 	UPD_T="更新核心程序"
@@ -36,7 +36,7 @@ if [ "$L" = "zh" ]; then
 	UPD_FAIL(){ echo "检查失败: $1"; }
 	UPD_RETRY="重试"
 else
-	TITLE="Web File Browser $VER"; START_N="Start";  CLOSE_N="Close"
+	TITLE="Web File Browser 2"; START_N="Start";  CLOSE_N="Close"
 	AUTOLBL="Auto-exit";      IPPRE="Local IP"; OFFLINE="Offline"
 	FLIGHT_T="Airplane mode on, WiFi off"; FLIGHT_C="Turn on network & continue"; FLIGHT_X="Don't start"
 	UPD_T="Update core"
@@ -51,8 +51,8 @@ fi
 # IP 标签
 [ "$IP" = "未连接" ] && LABEL="$IPPRE: $OFFLINE" || LABEL="$IPPRE: $IP"
 
-# 语言切换菜单项标签（双语）
-LANGN="语言"; [ "$L" = "en" ] && LANGN="Language"
+# 语言切换菜单项标签：显示“将要切换到的语言”，中文时显示“英语”，英文时显示“中文”，便于使用者修改
+LANGN="英语"; [ "$L" = "en" ] && LANGN="中文"
 
 tick() { [ "$1" = "$2" ] && printf '✓ ' || printf '  '; }
 
@@ -151,22 +151,22 @@ cat > menu.json.tmp <<JSON
 			"name": "$TITLE",
 			"priority": -1,
 			"items": [
-				$START
-				,
-				{ "name": "$CLOSE_N", "priority": 2, "action": "./stop.sh", "param": "" }
-				,
-				{ "name": "$AUTOLBL: $ADISP", "priority": 3, "items": [
+			$START
+			,
+			{ "name": "$CLOSE_N", "priority": 2, "action": "./stop.sh", "param": "" }
+			,
+			{ "name": "$AUTOLBL: $ADISP", "priority": 3, "items": [
 $TO
-				] }
-				,
-				{ "name": "$LANGN", "priority": 4, "action": "sh ./genmenu.sh --choose", "param": "", "exitmenu": false, "refresh": true }
-				,
-				$UPD
-				,
-				{ "name": "$LABEL", "priority": 6, "action": "echo", "param": "", "exitmenu": false }
-			]
-		}
-	]
+			] }
+			,
+			$UPD
+			,
+			{ "name": "$LABEL", "priority": 6, "action": "echo", "param": "", "exitmenu": false }
+			,
+			{ "name": "$LANGN", "priority": 7, "action": "sh ./genmenu.sh --choose", "param": "", "exitmenu": false, "refresh": true }
+		]
+	}
+]
 }
 JSON
 mv -f menu.json.tmp menu.json
