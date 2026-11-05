@@ -25,7 +25,7 @@ IP=$(ip_addr)
 
 # ---- 多语言文案 ----
 if [ "$L" = "zh" ]; then
-	TITLE="网页文件管理器2";  START_N="启动";   CLOSE_N="关闭"
+	TITLE="网页文件管理器 2";  START_N="启动";   CLOSE_N="关闭"
 	AUTOLBL="自动退出";      IPPRE="本机IP";  OFFLINE="未连接"
 	FLIGHT_T="当前为飞行模式，WiFi 已关闭"; FLIGHT_C="打开网络并继续"; FLIGHT_X="暂不启动"
 	UPD_T="更新核心程序"

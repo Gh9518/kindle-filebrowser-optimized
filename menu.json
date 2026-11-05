@@ -1,7 +1,7 @@
 {
 	"items": [
 		{
-			"name": "网页文件管理器2",
+			"name": "网页文件管理器 2",
 			"priority": -1,
 			"items": [
 			{ "name": "启动", "priority": 1, "action": "./start.sh", "param": "" }

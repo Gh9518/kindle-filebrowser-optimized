@@ -1,4 +1,4 @@
-# Kindle 的 filebrowser 优化（网页文件管理器2）/ Kindle filebrowser optimization (Web File Browser 2)
+# Kindle 的 filebrowser 优化（网页文件管理器 2）/ Kindle filebrowser optimization (Web File Browser 2)
 
 基于 [filebrowser](https://github.com/filebrowser/filebrowser) 的 Kindle（KUAL）网页文件管理器插件，可在手机、平板或电脑的浏览器中管理 Kindle 里的文件。本插件的原始方案与思路源自书伴（BookFere）文章 [《File Browser：便捷地管理 Kindle 中的文件》](https://bookfere.com/post/823.html)。核心程序已内置打包（v2.63.23，armv7），开箱即用，并支持在线更新。
 
@@ -17,12 +17,12 @@
 
 1. 越狱并安装 KUAL / MRPI。
 2. 将本文件夹（保持名为 `filebrowser`）放入 Kindle 的 `extensions/` 目录。
-3. 打开 KUAL，即可看到「网页文件管理器2」菜单。
+3. 打开 KUAL，即可看到「网页文件管理器 2」菜单。
 
 ## 使用 / Usage
 
 - 菜单默认以**中文**显示；如需切换语言，点菜单最后一项（中文时显示 `English`、英文时显示 `中文`），再选 **中文** 或 **English** 即可。
-- 进入「网页文件管理器2」→「启动」，屏幕显示本机 IP。
+- 进入「网页文件管理器 2」→「启动」，屏幕显示本机 IP。
 - 电脑浏览器访问 `http://<显示的IP>:80`，即可管理 `/mnt/us`（Kindle 根目录）下的文件。
 - 「关闭」停止服务并（按需）还原飞行模式后返回桌面。
 
@@ -36,7 +36,7 @@
 ## 菜单结构 / Menu
 
 ```
-网页文件管理器2
+网页文件管理器 2
 ├ 启动（飞行模式下先提示「打开网络并继续 / 暂不启动」）
 ├ 关闭（按需还原飞行模式，返回桌面）
 ├ 自动退出：05分 → 从不 / 05分 / 15分 / 30分 / 60分
