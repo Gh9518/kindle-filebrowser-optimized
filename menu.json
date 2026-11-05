@@ -1,0 +1,26 @@
+{
+	"items": [
+		{
+			"name": "Web File Browser 2.0",
+			"priority": -1,
+			"items": [
+				{ "name": "Start", "priority": 1, "action": "./start.sh", "param": "" }
+				,
+				{ "name": "Close", "priority": 2, "action": "./stop.sh", "param": "" }
+				,
+				{ "name": "Auto-exit: 05min", "priority": 3, "items": [
+
+				{ "name": "  Never", "priority": 1, "action": "./timeout.sh 0 Never", "param": "", "exitmenu": false, "refresh": true },
+				{ "name": "✓ 05min", "priority": 1, "action": "./timeout.sh 300 05min", "param": "", "exitmenu": false, "refresh": true },
+				{ "name": "  15min", "priority": 1, "action": "./timeout.sh 900 15min", "param": "", "exitmenu": false, "refresh": true },
+				{ "name": "  30min", "priority": 1, "action": "./timeout.sh 1800 30min", "param": "", "exitmenu": false, "refresh": true },
+				{ "name": "  60min", "priority": 1, "action": "./timeout.sh 3600 60min", "param": "", "exitmenu": false, "refresh": true }
+				] }
+				,
+				{ "name": "Update core", "priority": 4, "action": "./update.sh check", "param": "", "exitmenu": false, "refresh": true }
+				,
+				{ "name": "Local IP: Offline", "priority": 5, "action": "echo", "param": "", "exitmenu": false }
+			]
+		}
+	]
+}

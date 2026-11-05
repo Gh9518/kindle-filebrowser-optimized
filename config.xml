@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension>
+	<information>
+		<name>网页文件管理器 2.0</name>
+		<version>2.0</version>
+		<author>Sparkle</author>
+		<id>filebrowser</id>
+	</information>
+	<menus>
+		<menu type="json" dynamic="true">menu.json</menu>
+	</menus>
+</extension>

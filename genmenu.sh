@@ -1,0 +1,139 @@
+#!/bin/sh
+# 生成 KUAL 菜单 menu.json
+# 语言：中文系统显示中文菜单，其它系统显示英文菜单（由 sys_lang 判断）
+# 要点：不带 exitmenu:false 的项，KUAL 执行完动作后默认返回 Kindle 桌面；
+#       仅“需留在菜单继续操作”的项（自动退出/更新子项、本机IP 显示）才写 exitmenu:false
+. ./lib.sh
+
+# 插件版本（用于菜单标题展示；改 VERSION 文件即可）
+VER=$(cat VERSION 2>/dev/null); [ -z "$VER" ] && VER="2.0"
+
+# 系统语言（zh / en）
+L=$(sys_lang)
+
+AUTOCLOSE=300; [ -f AUTOCLOSE ] && AUTOCLOSE=$(cat AUTOCLOSE)
+UPDATE_INFO=""; [ -f UPDATE_INFO ] && UPDATE_INFO=$(cat UPDATE_INFO)
+IP=$(ip_addr)
+
+# ---- 多语言文案 ----
+if [ "$L" = "zh" ]; then
+	TITLE="网页文件管理器 $VER";  START_N="启动";   CLOSE_N="关闭"
+	AUTOLBL="自动退出";      IPPRE="本机IP";  OFFLINE="未连接"
+	FLIGHT_T="当前为飞行模式，WiFi 已关闭"; FLIGHT_C="打开网络并继续"; FLIGHT_X="暂不启动"
+	UPD_T="更新核心程序"
+	UPD_FOUND(){ echo "发现新版本: $1（当前 $2）"; }
+	UPD_CONFIRM="确认更新"; UPD_LATER="暂不更新"
+	UPD_LATEST(){ echo "已是最新: $1"; }
+	UPD_BACK="返回"
+	UPD_FAIL(){ echo "检查失败: $1"; }
+	UPD_RETRY="重试"
+else
+	TITLE="Web File Browser $VER"; START_N="Start";  CLOSE_N="Close"
+	AUTOLBL="Auto-exit";      IPPRE="Local IP"; OFFLINE="Offline"
+	FLIGHT_T="Airplane mode on, WiFi off"; FLIGHT_C="Turn on network & continue"; FLIGHT_X="Don't start"
+	UPD_T="Update core"
+	UPD_FOUND(){ echo "New version: $1 (current $2)"; }
+	UPD_CONFIRM="Confirm update"; UPD_LATER="Not now"
+	UPD_LATEST(){ echo "Up to date: $1"; }
+	UPD_BACK="Back"
+	UPD_FAIL(){ echo "Check failed: $1"; }
+	UPD_RETRY="Retry"
+fi
+
+# IP 标签
+[ "$IP" = "未连接" ] && LABEL="$IPPRE: $OFFLINE" || LABEL="$IPPRE: $IP"
+
+tick() { [ "$1" = "$2" ] && printf '✓ ' || printf '  '; }
+
+# 秒数 → 紧凑显示文案（跟随系统语言）
+tlabel() {
+	case "$1" in
+		0)    [ "$L" = "zh" ] && printf '从不' || printf 'Never' ;;
+		300)  [ "$L" = "zh" ] && printf '05分' || printf '05min' ;;
+		900)  [ "$L" = "zh" ] && printf '15分' || printf '15min' ;;
+		1800) [ "$L" = "zh" ] && printf '30分' || printf '30min' ;;
+		3600) [ "$L" = "zh" ] && printf '60分' || printf '60min' ;;
+		*)    [ "$L" = "zh" ] && printf '%s秒' "$1" || printf '%ssec' "$1" ;;
+	esac
+}
+ADISP=$(tlabel "$AUTOCLOSE")
+
+# 启动项：飞行模式下先提示“是否打开网络”，否则直接启动
+# 注意：启动动作不带 exitmenu:false，执行完由 KUAL 默认返回桌面
+if [ "$(wireless_state)" = "0" ]; then
+	START="{ \"name\": \"$START_N\", \"priority\": 1, \"refresh\": true, \"items\": [
+		{ \"name\": \"$FLIGHT_T\", \"priority\": 1, \"action\": \"echo\", \"param\": \"\", \"exitmenu\": false },
+		{ \"name\": \"$FLIGHT_C\", \"priority\": 2, \"action\": \"./start.sh\", \"param\": \"\" },
+		{ \"name\": \"$FLIGHT_X\", \"priority\": 3, \"action\": \"sh ./genmenu.sh\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true }
+	] }"
+else
+	START="{ \"name\": \"$START_N\", \"priority\": 1, \"action\": \"./start.sh\", \"param\": \"\" }"
+fi
+
+# 自动退出时间选项（值列表），当前项加 ✓（默认 5 分钟）
+# 子项 exitmenu:false + refresh:true：选中后留在菜单并即时刷新，方便连续设置
+T_VALS="0 300 900 1800 3600"
+TO=""
+for v in $T_VALS; do
+	l=$(tlabel "$v")
+	TO="$TO
+				{ \"name\": \"$(tick "$v" "$AUTOCLOSE")$l\", \"priority\": 1, \"action\": \"./timeout.sh $v $l\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true },"
+done
+TO=$(printf '%s' "$TO" | sed '$ s/,$//')
+
+# “更新核心程序”菜单项（依校验状态）
+# 子项 exitmenu:false + refresh:true：选中后留在菜单并即时刷新
+if [ -z "$UPDATE_INFO" ]; then
+	UPD="{ \"name\": \"$UPD_T\", \"priority\": 4, \"action\": \"./update.sh check\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true }"
+else
+	s=$(printf '%s' "$UPDATE_INFO" | cut -d'|' -f1)
+	a1=$(printf '%s' "$UPDATE_INFO" | cut -d'|' -f2)
+	a2=$(printf '%s' "$UPDATE_INFO" | cut -d'|' -f3)
+	if [ "$s" = "available" ]; then
+		f=$(UPD_FOUND "$a1" "$a2")
+		UPD="{ \"name\": \"$UPD_T\", \"priority\": 4, \"refresh\": true, \"items\": [
+			{ \"name\": \"$f\", \"priority\": 1, \"action\": \"echo\", \"param\": \"\", \"exitmenu\": false },
+			{ \"name\": \"$UPD_CONFIRM\", \"priority\": 2, \"action\": \"./update.sh do\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true },
+			{ \"name\": \"$UPD_LATER\", \"priority\": 3, \"action\": \"rm -f UPDATE_INFO; sh ./genmenu.sh\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true }
+		] }"
+	elif [ "$s" = "latest" ]; then
+		f=$(UPD_LATEST "$a1")
+		UPD="{ \"name\": \"$UPD_T\", \"priority\": 4, \"refresh\": true, \"items\": [
+			{ \"name\": \"$f\", \"priority\": 1, \"action\": \"echo\", \"param\": \"\", \"exitmenu\": false },
+			{ \"name\": \"$UPD_BACK\", \"priority\": 2, \"action\": \"rm -f UPDATE_INFO; sh ./genmenu.sh\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true }
+		] }"
+	else
+		f=$(UPD_FAIL "$a1")
+		UPD="{ \"name\": \"$UPD_T\", \"priority\": 4, \"refresh\": true, \"items\": [
+			{ \"name\": \"$f\", \"priority\": 1, \"action\": \"echo\", \"param\": \"\", \"exitmenu\": false },
+			{ \"name\": \"$UPD_RETRY\", \"priority\": 2, \"action\": \"./update.sh check\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true },
+			{ \"name\": \"$UPD_BACK\", \"priority\": 3, \"action\": \"rm -f UPDATE_INFO; sh ./genmenu.sh\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true }
+		] }"
+	fi
+fi
+
+# 外层标题：KUAL 启动器点进本程序后显示的内部菜单
+cat > menu.json.tmp <<JSON
+{
+	"items": [
+		{
+			"name": "$TITLE",
+			"priority": -1,
+			"items": [
+				$START
+				,
+				{ "name": "$CLOSE_N", "priority": 2, "action": "./stop.sh", "param": "" }
+				,
+				{ "name": "$AUTOLBL: $ADISP", "priority": 3, "items": [
+$TO
+				] }
+				,
+				$UPD
+				,
+				{ "name": "$LABEL", "priority": 5, "action": "echo", "param": "", "exitmenu": false }
+			]
+		}
+	]
+}
+JSON
+mv -f menu.json.tmp menu.json

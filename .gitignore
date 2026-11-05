@@ -1,0 +1,8 @@
+# 运行期生成的临时状态文件（不应纳入版本库）
+AUTOCLOSE
+UPDATE_INFO
+WIFI_STATE
+*.log
+
+# 用户手动语言切换开关（en / zh），不纳入版本库
+LANG
