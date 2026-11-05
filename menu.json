@@ -21,7 +21,7 @@
 			,
 			{ "name": "本机IP: 未连接", "priority": 6, "action": "echo", "param": "", "exitmenu": false }
 			,
-			{ "name": "英语", "priority": 7, "action": "sh ./genmenu.sh --choose", "param": "", "exitmenu": false, "refresh": true }
+			{ "name": "English", "priority": 7, "action": "sh ./genmenu.sh --choose", "param": "", "exitmenu": false, "refresh": true }
 		]
 	}
 ]

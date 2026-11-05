@@ -43,21 +43,15 @@ wireless_state() {
 	[ "$st" = "0" ] && echo 0 || echo 1
 }
 
-# 系统语言判断：默认显示中文菜单；LANG 文件可手动强制为英文
-# 读取顺序：1) 插件目录 LANG 文件可手动强制（写 en→英文 / zh→中文）；
-#           2) 否则按 Kindle UI 语言自动（含 zh 即中文，明确为 en 才英文）；
-#           3) 未识别系统语言时默认中文
+# 界面语言：默认中文；仅当 LANG 文件显式写 en 时才切换为英文
+# 说明：不依据 Kindle 系统语言自动判断，确保任何系统语言下打开都是中文（真正的“默认中文”）；
+#       非中文用户点菜单最后的语言项即可切换（等效于写 LANG 文件）。
 sys_lang() {
 	[ -f LANG ] && { read -r o < LANG; case "$o" in
-		*[Zz][Hh]*) echo zh; return ;;
 		*[Ee][Nn]*) echo en; return ;;
+		*) echo zh; return ;;
 	esac; }
-	l=$(lipc-get-prop com.lab126.winmgr lang 2>/dev/null)
-	case "$l" in
-		*[Zz][Hh]*) echo zh ;;
-		*[Ee][Nn]*) echo en ;;
-		*) echo zh ;;
-	esac
+	echo zh
 }
 
 # 秒数 → 英文紧凑文案（eips 屏显无中文字形，状态提示统一用英文）
