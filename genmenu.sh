@@ -1,12 +1,20 @@
 #!/bin/sh
 # 生成 KUAL 菜单 menu.json
-# 语言：中文系统显示中文菜单，其它系统显示英文菜单（由 sys_lang 判断）
+# 语言：默认中文；可手动切换英文（见 LANG 文件 / 菜单内“语言”项）
+# 首次运行（无 LANG 文件）或执行 `genmenu.sh --choose` 时，显示双语“选择语言”菜单
 # 要点：不带 exitmenu:false 的项，KUAL 执行完动作后默认返回 Kindle 桌面；
 #       仅“需留在菜单继续操作”的项（自动退出/更新子项、本机IP 显示）才写 exitmenu:false
 . ./lib.sh
 
 # 插件版本（用于菜单标题展示；改 VERSION 文件即可）
 VER=$(cat VERSION 2>/dev/null); [ -z "$VER" ] && VER="2.0"
+
+# 运行模式：--choose 强制语言选择；无 LANG 文件视为首次运行，也进入语言选择
+if [ "$1" = "--choose" ] || [ ! -f LANG ]; then
+	MODE="choose"
+else
+	MODE="normal"
+fi
 
 # 系统语言（zh / en）
 L=$(sys_lang)
@@ -42,6 +50,9 @@ fi
 
 # IP 标签
 [ "$IP" = "未连接" ] && LABEL="$IPPRE: $OFFLINE" || LABEL="$IPPRE: $IP"
+
+# 语言切换菜单项标签（双语）
+LANGN="语言"; [ "$L" = "en" ] && LANGN="Language"
 
 tick() { [ "$1" = "$2" ] && printf '✓ ' || printf '  '; }
 
@@ -84,32 +95,52 @@ TO=$(printf '%s' "$TO" | sed '$ s/,$//')
 # “更新核心程序”菜单项（依校验状态）
 # 子项 exitmenu:false + refresh:true：选中后留在菜单并即时刷新
 if [ -z "$UPDATE_INFO" ]; then
-	UPD="{ \"name\": \"$UPD_T\", \"priority\": 4, \"action\": \"./update.sh check\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true }"
+	UPD="{ \"name\": \"$UPD_T\", \"priority\": 5, \"action\": \"./update.sh check\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true }"
 else
 	s=$(printf '%s' "$UPDATE_INFO" | cut -d'|' -f1)
 	a1=$(printf '%s' "$UPDATE_INFO" | cut -d'|' -f2)
 	a2=$(printf '%s' "$UPDATE_INFO" | cut -d'|' -f3)
 	if [ "$s" = "available" ]; then
 		f=$(UPD_FOUND "$a1" "$a2")
-		UPD="{ \"name\": \"$UPD_T\", \"priority\": 4, \"refresh\": true, \"items\": [
+		UPD="{ \"name\": \"$UPD_T\", \"priority\": 5, \"refresh\": true, \"items\": [
 			{ \"name\": \"$f\", \"priority\": 1, \"action\": \"echo\", \"param\": \"\", \"exitmenu\": false },
 			{ \"name\": \"$UPD_CONFIRM\", \"priority\": 2, \"action\": \"./update.sh do\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true },
 			{ \"name\": \"$UPD_LATER\", \"priority\": 3, \"action\": \"rm -f UPDATE_INFO; sh ./genmenu.sh\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true }
 		] }"
 	elif [ "$s" = "latest" ]; then
 		f=$(UPD_LATEST "$a1")
-		UPD="{ \"name\": \"$UPD_T\", \"priority\": 4, \"refresh\": true, \"items\": [
+		UPD="{ \"name\": \"$UPD_T\", \"priority\": 5, \"refresh\": true, \"items\": [
 			{ \"name\": \"$f\", \"priority\": 1, \"action\": \"echo\", \"param\": \"\", \"exitmenu\": false },
 			{ \"name\": \"$UPD_BACK\", \"priority\": 2, \"action\": \"rm -f UPDATE_INFO; sh ./genmenu.sh\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true }
 		] }"
 	else
 		f=$(UPD_FAIL "$a1")
-		UPD="{ \"name\": \"$UPD_T\", \"priority\": 4, \"refresh\": true, \"items\": [
+		UPD="{ \"name\": \"$UPD_T\", \"priority\": 5, \"refresh\": true, \"items\": [
 			{ \"name\": \"$f\", \"priority\": 1, \"action\": \"echo\", \"param\": \"\", \"exitmenu\": false },
 			{ \"name\": \"$UPD_RETRY\", \"priority\": 2, \"action\": \"./update.sh check\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true },
 			{ \"name\": \"$UPD_BACK\", \"priority\": 3, \"action\": \"rm -f UPDATE_INFO; sh ./genmenu.sh\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true }
 		] }"
 	fi
+fi
+
+# 首次运行 / 强制选择：显示双语“选择语言”菜单（无需预知系统语言即可选取）
+if [ "$MODE" = "choose" ]; then
+cat > menu.json.tmp <<JSON
+{
+	"items": [
+		{
+			"name": "选择语言 / Select language",
+			"priority": -1,
+			"items": [
+				{ "name": "中文", "priority": 1, "action": "./setlang.sh zh", "param": "", "exitmenu": false, "refresh": true },
+				{ "name": "English", "priority": 2, "action": "./setlang.sh en", "param": "", "exitmenu": false, "refresh": true }
+			]
+		}
+	]
+}
+JSON
+mv -f menu.json.tmp menu.json
+exit 0
 fi
 
 # 外层标题：KUAL 启动器点进本程序后显示的内部菜单
@@ -128,9 +159,11 @@ cat > menu.json.tmp <<JSON
 $TO
 				] }
 				,
+				{ "name": "$LANGN", "priority": 4, "action": "sh ./genmenu.sh --choose", "param": "", "exitmenu": false, "refresh": true }
+				,
 				$UPD
 				,
-				{ "name": "$LABEL", "priority": 5, "action": "echo", "param": "", "exitmenu": false }
+				{ "name": "$LABEL", "priority": 6, "action": "echo", "param": "", "exitmenu": false }
 			]
 		}
 	]

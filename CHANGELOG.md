@@ -1,5 +1,14 @@
 # 更新日志 / Changelog
 
+> 版本号规则：大版本为功能级重构；**小更新（如本次）递增小版本号（2.0 → 2.0.1 → 2.0.2 …）**，便于区分小幅优化与重大变更。
+
+## v2.0.1（2026-11-05）
+
+- 新增**首次运行语言选择**：无语言记录时弹出双语「选择语言 / Select language」菜单（中文 / English），选定后以该语言显示，降低非中文用户使用门槛。
+- 菜单内新增「语言 / Language」项，可随时重新选择界面语言（等效于 `LANG` 文件）。
+- 版本号升至 **2.0.1**（小更新递增小版本号）。
+- 致谢与参考：书伴（BookFere）文章 [《File Browser：便捷地管理 Kindle 中的文件》](https://bookfere.com/post/823.html)（本插件原始思路来源，由 Sparkle 投稿）；核心程序 filebrowser（作者 Henrique Dias，现由 Oleg Lobanov 维护）。
+
 ## v2.0（2026-11-05）
 
 - 插件版本号升至 **2.0**（与核心 filebrowser 版本号区分），`config.xml`、`VERSION`、`menu.json` 标题同步。
