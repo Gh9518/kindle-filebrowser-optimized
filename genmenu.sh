@@ -58,14 +58,15 @@ LANGN="English"; [ "$L" = "en" ] && LANGN="中文"
 tick() { [ "$1" = "$2" ] && printf '✓ ' || printf '  '; }
 
 # 秒数 → 紧凑显示文案（跟随系统语言）
+# 菜单选项见下方 T_VALS（01/03/05/10 分）；保留 0 及按分钟换算的兜底，兼容旧设备残留的 AUTOCLOSE 值
 tlabel() {
 	case "$1" in
 		0)    [ "$L" = "zh" ] && printf '从不' || printf 'Never' ;;
+		60)   [ "$L" = "zh" ] && printf '01分' || printf '01min' ;;
+		180)  [ "$L" = "zh" ] && printf '03分' || printf '03min' ;;
 		300)  [ "$L" = "zh" ] && printf '05分' || printf '05min' ;;
-		900)  [ "$L" = "zh" ] && printf '15分' || printf '15min' ;;
-		1800) [ "$L" = "zh" ] && printf '30分' || printf '30min' ;;
-		3600) [ "$L" = "zh" ] && printf '60分' || printf '60min' ;;
-		*)    [ "$L" = "zh" ] && printf '%s秒' "$1" || printf '%ssec' "$1" ;;
+		600)  [ "$L" = "zh" ] && printf '10分' || printf '10min' ;;
+		*)    [ "$L" = "zh" ] && printf '%02d分' "$(( $1 / 60 ))" || printf '%02dmin' "$(( $1 / 60 ))" ;;
 	esac
 }
 ADISP=$(tlabel "$AUTOCLOSE")
@@ -82,9 +83,9 @@ else
 	START="{ \"name\": \"$START_N\", \"priority\": 1, \"action\": \"./start.sh\", \"param\": \"\" }"
 fi
 
-# 自动退出时间选项（值列表），当前项加 ✓（默认 5 分钟）
-# 子项 exitmenu:false + refresh:true：选中后留在菜单并即时刷新，方便连续设置
-T_VALS="0 300 900 1800 3600"
+# 自动退出时间选项（值列表，秒）：01分 / 03分 / 05分 / 10分；当前项加 ✓（默认 05分）
+# 短档位覆盖多数使用场景，避免长时间挂机耗电；子项 exitmenu:false + refresh:true 选中后即时刷新
+T_VALS="60 180 300 600"
 TO=""
 for v in $T_VALS; do
 	l=$(tlabel "$v")
