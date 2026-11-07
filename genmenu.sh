@@ -1,9 +1,10 @@
 #!/bin/sh
 # 生成 KUAL 菜单 menu.json
-# 语言：默认中文；可手动切换英文（菜单底部“英语/中文”项 / LANG 文件）
-# 执行 `genmenu.sh --choose` 时，显示双语“选择语言”菜单（菜单底部语言项点开即进入）
+# 语言：默认中文；可手动切换英文（菜单底部"英语/中文"项 / LANG 文件）
+# 执行 `genmenu.sh --choose` 时，显示双语"选择语言"菜单（菜单底部语言项点开即进入）
 # 要点：不带 exitmenu:false 的项，KUAL 执行完动作后默认返回 Kindle 桌面；
-#       仅“需留在菜单继续操作”的项（自动退出/更新子项、本机IP 显示）才写 exitmenu:false
+#       仅"需留在菜单继续操作"的项（自动退出/更新子项、本机IP 显示）才写 exitmenu:false
+# 自动退出：单一机制「连续无传输 N 秒后退出」，档位见 T_VALS（从不/01/03/05 分）
 . ./lib.sh
 
 # 插件版本（用于菜单标题展示；改 VERSION 文件即可）
@@ -19,7 +20,7 @@ fi
 # 系统语言（zh / en）
 L=$(sys_lang)
 
-AUTOCLOSE=300; [ -f AUTOCLOSE ] && AUTOCLOSE=$(cat AUTOCLOSE)
+AUTOCLOSE=60; [ -f AUTOCLOSE ] && AUTOCLOSE=$(cat AUTOCLOSE)
 UPDATE_INFO=""; [ -f UPDATE_INFO ] && UPDATE_INFO=$(cat UPDATE_INFO)
 IP=$(ip_addr)
 
@@ -52,25 +53,26 @@ fi
 [ "$IP" = "未连接" ] && LABEL="$IPPRE: $OFFLINE" || LABEL="$IPPRE: $IP"
 
 # 语言切换项（菜单最后一项）：中文菜单显示英文名称 English，英文菜单显示中文名 中文
-# 即始终显示“将要切换到的目标语言”本身的名字，便于使用者辨识与修改
+# 即始终显示"将要切换到的目标语言"本身的名字，便于使用者辨识与修改
 LANGN="English"; [ "$L" = "en" ] && LANGN="中文"
 
 tick() { [ "$1" = "$2" ] && printf '✓ ' || printf '  '; }
 
 # 秒数 → 紧凑显示文案（跟随系统语言）
-# 菜单选项见下方 T_VALS（从不/03/05/10 分）；保留 0 及按分钟换算的兜底，兼容旧设备残留的 AUTOCLOSE 值
+# 自动退出 = 连续无传输 N 秒后退出；档位见 T_VALS（从不/01/03/05 分）
+# 保留 0 及按分钟换算的兜底，兼容旧设备残留的 AUTOCLOSE 值（如 900→15分）
 tlabel() {
 	case "$1" in
 		0)    [ "$L" = "zh" ] && printf '从不' || printf 'Never' ;;
+		60)   [ "$L" = "zh" ] && printf '01分' || printf '01min' ;;
 		180)  [ "$L" = "zh" ] && printf '03分' || printf '03min' ;;
 		300)  [ "$L" = "zh" ] && printf '05分' || printf '05min' ;;
-		600)  [ "$L" = "zh" ] && printf '10分' || printf '10min' ;;
 		*)    [ "$L" = "zh" ] && printf '%02d分' "$(( $1 / 60 ))" || printf '%02dmin' "$(( $1 / 60 ))" ;;
 	esac
 }
 ADISP=$(tlabel "$AUTOCLOSE")
 
-# 启动项：飞行模式下先提示“是否打开网络”，否则直接启动
+# 启动项：飞行模式下先提示"是否打开网络"，否则直接启动
 # 注意：启动动作不带 exitmenu:false，执行完由 KUAL 默认返回桌面
 if [ "$(wireless_state)" = "0" ]; then
 	START="{ \"name\": \"$START_N\", \"priority\": 1, \"refresh\": true, \"items\": [
@@ -82,28 +84,19 @@ else
 	START="{ \"name\": \"$START_N\", \"priority\": 1, \"action\": \"./start.sh\", \"param\": \"\" }"
 fi
 
-# 定时退出选项（值列表，秒）：从不 / 03分 / 05分 / 10分；当前项加 ✓（默认 05分）
-# 第 5 项为「闲置退出」开关（1 分钟不传输即退出），与上面的定时档位彼此独立
-T_VALS="0 180 300 600"
-
-# 闲置退出开关标签：显示「将要执行的动作」，中文/英文各一套
-if [ -f IDLE ] && [ "$(cat IDLE 2>/dev/null)" = "off" ]; then
-	IDLEN="恢复闲置退出"; [ "$L" = "en" ] && IDLEN="Enable idle-exit"
-else
-	IDLEN="取消闲置退出"; [ "$L" = "en" ] && IDLEN="Disable idle-exit"
-fi
-
+# 自动退出档位（秒）：从不(0) / 01分(60) / 03分(180) / 05分(300)
+# 全部为「连续无传输该时长即退出」；从不 = 关闭自动退出功能
+# 子项 exitmenu:false + refresh:true：选中后留在菜单并即时刷新（timeout.sh 先重建菜单）
+T_VALS="0 60 180 300"
 TO=""
 for v in $T_VALS; do
 	l=$(tlabel "$v")
 	TO="$TO
 				{ \"name\": \"$(tick "$v" "$AUTOCLOSE")$l\", \"priority\": 1, \"action\": \"./timeout.sh $v $l\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true },"
 done
-TO="$TO
-				{ \"name\": \"$IDLEN\", \"priority\": 5, \"action\": \"./idletoggle.sh\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true }"
 TO=$(printf '%s' "$TO" | sed '$ s/,$//')
 
-# “更新核心程序”菜单项（依校验状态）
+# "更新核心程序"菜单项（依校验状态）
 # 子项 exitmenu:false + refresh:true：选中后留在菜单并即时刷新
 if [ -z "$UPDATE_INFO" ]; then
 	UPD="{ \"name\": \"$UPD_T\", \"priority\": 5, \"action\": \"./update.sh check\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true }"
@@ -134,7 +127,7 @@ else
 	fi
 fi
 
-# 首次运行 / 强制选择：显示双语“选择语言”菜单（无需预知系统语言即可选取）
+# 首次运行 / 强制选择：显示双语"选择语言"菜单（无需预知系统语言即可选取）
 if [ "$MODE" = "choose" ]; then
 cat > menu.json.tmp <<JSON
 {

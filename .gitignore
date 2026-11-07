@@ -2,7 +2,6 @@
 AUTOCLOSE
 UPDATE_INFO
 WIFI_STATE
-IDLE
 *.log
 
 # 用户手动语言切换开关（en / zh），不纳入版本库

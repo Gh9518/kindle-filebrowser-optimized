@@ -57,12 +57,9 @@ while [ "$i" -lt 15 ]; do
 	sleep 1; i=$((i+1))
 done
 
-# 定时退出计时（默认 05 分）：到点执行与「关闭」相同的逻辑；设为「从不」(0) 则不启用
-AC=300; [ -f AUTOCLOSE ] && AC=$(cat AUTOCLOSE)
-[ "$AC" -gt 0 ] 2>/dev/null && detach ./autoclose.sh "$AC" >/dev/null 2>&1 </dev/null &
-
-# 闲置退出守护（默认开启）：连续 1 分钟 80 端口无传输即关闭
-# 菜单「取消闲置退出」只暂停这个守护，不影响上面的定时退出
+# 自动退出守护（本插件唯一的自动退出机制）：连续「AUTOCLOSE 秒」80 端口无传输即关闭。
+# 守护常驻、每轮重读 AUTOCLOSE：菜单改档位即时生效（无需重启守护），AUTOCLOSE=0(从不)则空转待命不判定。
+# 触发退出时由 idle.sh 调用 stop.sh，完整复用「按启动时飞行模式状态还原」的退出逻辑。
 detach ./idle.sh >/dev/null 2>&1 </dev/null &
 
 # 先刷新菜单（更新本机IP 标签、去掉飞行模式提示），供下次进入查看

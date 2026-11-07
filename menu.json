@@ -8,13 +8,12 @@
 			,
 			{ "name": "关闭", "priority": 2, "action": "./stop.sh", "param": "" }
 			,
-			{ "name": "自动退出: 05分", "priority": 3, "items": [
+			{ "name": "自动退出: 01分", "priority": 3, "items": [
 
 				{ "name": "  从不", "priority": 1, "action": "./timeout.sh 0 从不", "param": "", "exitmenu": false, "refresh": true },
+				{ "name": "✓ 01分", "priority": 1, "action": "./timeout.sh 60 01分", "param": "", "exitmenu": false, "refresh": true },
 				{ "name": "  03分", "priority": 1, "action": "./timeout.sh 180 03分", "param": "", "exitmenu": false, "refresh": true },
-				{ "name": "✓ 05分", "priority": 1, "action": "./timeout.sh 300 05分", "param": "", "exitmenu": false, "refresh": true },
-				{ "name": "  10分", "priority": 1, "action": "./timeout.sh 600 10分", "param": "", "exitmenu": false, "refresh": true },
-				{ "name": "取消闲置退出", "priority": 5, "action": "./idletoggle.sh", "param": "", "exitmenu": false, "refresh": true }
+				{ "name": "  05分", "priority": 1, "action": "./timeout.sh 300 05分", "param": "", "exitmenu": false, "refresh": true }
 			] }
 			,
 			{ "name": "更新核心程序", "priority": 5, "action": "./update.sh check", "param": "", "exitmenu": false, "refresh": true }

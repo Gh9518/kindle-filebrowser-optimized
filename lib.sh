@@ -55,13 +55,13 @@ sys_lang() {
 }
 
 # 秒数 → 英文紧凑文案（eips 屏显无中文字形，状态提示统一用英文）
-# 定时档位 从不/03/05/10 分；兜底按分钟换算，兼容旧 AUTOCLOSE 值（如 60→01min）
+# 空闲退出档位 从不/01/03/05 分；兜底按分钟换算，兼容旧 AUTOCLOSE 值（如 900→15min）
 adisp_en() {
 	case "$1" in
 		0)    printf 'Never' ;;
+		60)   printf '01min' ;;
 		180)  printf '03min' ;;
 		300)  printf '05min' ;;
-		600)  printf '10min' ;;
 		*)    printf '%02dmin' "$(( $1 / 60 ))" ;;
 	esac
 }

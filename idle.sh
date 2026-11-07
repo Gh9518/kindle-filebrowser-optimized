@@ -1,18 +1,30 @@
 #!/bin/sh
-# 闲置退出守护：连续 1 分钟 80 端口无任何传输，则执行与「关闭」相同的逻辑
+# 自动退出守护 —— 本插件「唯一」的自动退出机制
+#   语义：连续「AUTOCLOSE 秒」80 端口无任何传输 → 执行与「关闭」完全相同的退出逻辑(sh ./stop.sh)。
+#         因此会一并按需还原飞行模式、关闭屏幕常亮、返回桌面 —— 与手动「关闭」走同一条链路。
+#   AUTOCLOSE 取值：0=从不（关闭此功能，守护空转待命、不判定）；60/180/300=1/3/5 分无传输即退出。
+#   每轮重新读取 AUTOCLOSE：菜单里改档位后无需重启守护，即时生效。
 #
-# 判定依据：iptables 中 --dport 80 规则的累计计数（只统计访问本服务的流量，
-#           Kindle 后台联网不会计入，实测空闲期计数恒定不变、一次页面请求即明显增长）；
-#           若该规则不可用，退化为统计非 lo 网卡字节数，并加阈值过滤后台噪声。
-# 与「定时退出」(autoclose.sh) 完全独立，两者互不影响，谁先到谁触发关闭。
-# 菜单「取消闲置退出」会写 IDLE=off，本脚本据此暂停判定（不退出、继续待命）；
-# 恢复为 on 时无需重启脚本，即时生效。
+# 判定「传输」：读 iptables 中 --dpt 80 规则的累计计数（只统计访问本服务的流量）。
+#   Kindle 后台联网、以及「启动时飞行模式→临时开网 / 退出时还原」的 WiFi 开关都不会计入，
+#   实测静置期计数恒定不变、一次页面请求即明显增长。规则不可用时退化为统计非 lo 网卡字节
+#   并加阈值过滤噪声。
+# 与飞行模式的关系：本脚本不直接动网络；触发时调用 stop.sh，由 stop.sh 依据启动时写入的
+#   WIFI_STATE 决定是否重新开启飞行模式，保证「自动退出」与「手动关闭」还原行为一致。
 cd "$(dirname "$0")" || exit 1
 . ./lib.sh
 
-IDLE_SECS=${IDLE_SECS:-60}   # 连续无传输多少秒后退出（默认 1 分钟）
-STEP=${IDLE_STEP:-10}        # 采样间隔（秒）
+STEP=${IDLE_STEP:-10}        # 采样间隔（秒）；测试时可用环境变量缩短
 DEV_MIN=4096                 # fallback 模式：采样间隔内字节增量超过此值才算「有传输」
+
+# 读取当前「连续无传输多少秒后退出」；空/非法值默认 60（1 分），0 表示「从不」
+read_secs() {
+	s=$(cat AUTOCLOSE 2>/dev/null)
+	case "$s" in
+		''|*[!0-9]*) echo 60 ;;
+		*) echo "$s" ;;
+	esac
+}
 
 # 采样：优先返回 80 端口计数字符串（如 "12_1865"）；无该规则时返回 DEV<总字节>
 # 用字符串比较而非数值，规避不同 iptables 版本把计数显示成 "2K" 这类后缀
@@ -47,15 +59,16 @@ quiet=0
 while :; do
 	sleep "$STEP"
 	listening || exit 0
-	# 已被「取消闲置退出」关闭：清空计时、刷新基线，继续待命（不判定、不退出）
-	if [ -f IDLE ] && [ "$(cat IDLE 2>/dev/null)" = "off" ]; then
+	SECS=$(read_secs)
+	# 「从不」= 关闭此功能（等价旧版「取消闲置退出」）：清空计时、刷新基线、继续待命，不判定不退出
+	if [ "$SECS" -le 0 ] 2>/dev/null; then
 		quiet=0; prev=$(sample); continue
 	fi
 	cur=$(sample)
 	if changed "$prev" "$cur"; then quiet=0; else quiet=$(( quiet + STEP )); fi
 	prev=$cur
-	if [ "$quiet" -ge "$IDLE_SECS" ]; then
-		status "Idle 1min, closing..."; sleep 1
+	if [ "$quiet" -ge "$SECS" ]; then
+		status "No traffic $(( SECS / 60 ))min, closing..."; sleep 1
 		sh ./stop.sh
 		exit 0
 	fi
