@@ -25,12 +25,17 @@ lipc-set-prop -i com.lab126.powerd preventScreenSaver 1 2>/dev/null
 
 # 结束残留进程：既释放 80 端口，也释放 filebrowser.db 的 BoltDB 写锁
 # （残留进程持锁时新进程会 "Error: timeout" 启动失败，同样表现为无法访问）
+# 同时清掉上一轮的自动退出守护，避免重复点「启动」后叠加多个定时器
 for p in $(ps aux 2>/dev/null | grep [f]ilebrowser | awk '{print $2}'); do kill "$p" 2>/dev/null; done
+for p in $(ps aux 2>/dev/null | grep -E '[i]dle.sh|[a]utoclose.sh' | awk '{print $2}'); do kill "$p" 2>/dev/null; done
 sleep 2
 
 # 放行 80 端口入站（部分 Kindle 固件默认拦截入站连接）
-iptables -I INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null || \
-	/sbin/iptables -I INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null
+# 该规则同时作为「闲置退出」判定传输的计数器，故只在不存在时插入，避免重复堆积
+if ! iptables -L INPUT -n 2>/dev/null | grep -q 'dpt:80'; then
+	iptables -I INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null || \
+		/sbin/iptables -I INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null
+fi
 
 # 后台启动：v2.63.23 无 serve 子命令；--noauth 免登录（对已有 db 同样生效）；-d 显式指定数据库
 # setsid 完全脱离终端 + 日志写文件，避免断网时后台进程向已关闭的 KUAL 管道写日志触发 SIGPIPE 崩溃
@@ -52,9 +57,13 @@ while [ "$i" -lt 15 ]; do
 	sleep 1; i=$((i+1))
 done
 
-# 自动退出计时（默认 5 分钟）：到点执行与「关闭」相同的逻辑
+# 定时退出计时（默认 05 分）：到点执行与「关闭」相同的逻辑；设为「从不」(0) 则不启用
 AC=300; [ -f AUTOCLOSE ] && AC=$(cat AUTOCLOSE)
 [ "$AC" -gt 0 ] 2>/dev/null && detach ./autoclose.sh "$AC" >/dev/null 2>&1 </dev/null &
+
+# 闲置退出守护（默认开启）：连续 1 分钟 80 端口无传输即关闭
+# 菜单「取消闲置退出」只暂停这个守护，不影响上面的定时退出
+detach ./idle.sh >/dev/null 2>&1 </dev/null &
 
 # 先刷新菜单（更新本机IP 标签、去掉飞行模式提示），供下次进入查看
 sh ./genmenu.sh >/dev/null 2>&1

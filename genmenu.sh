@@ -58,11 +58,10 @@ LANGN="English"; [ "$L" = "en" ] && LANGN="中文"
 tick() { [ "$1" = "$2" ] && printf '✓ ' || printf '  '; }
 
 # 秒数 → 紧凑显示文案（跟随系统语言）
-# 菜单选项见下方 T_VALS（01/03/05/10 分）；保留 0 及按分钟换算的兜底，兼容旧设备残留的 AUTOCLOSE 值
+# 菜单选项见下方 T_VALS（从不/03/05/10 分）；保留 0 及按分钟换算的兜底，兼容旧设备残留的 AUTOCLOSE 值
 tlabel() {
 	case "$1" in
 		0)    [ "$L" = "zh" ] && printf '从不' || printf 'Never' ;;
-		60)   [ "$L" = "zh" ] && printf '01分' || printf '01min' ;;
 		180)  [ "$L" = "zh" ] && printf '03分' || printf '03min' ;;
 		300)  [ "$L" = "zh" ] && printf '05分' || printf '05min' ;;
 		600)  [ "$L" = "zh" ] && printf '10分' || printf '10min' ;;
@@ -83,15 +82,25 @@ else
 	START="{ \"name\": \"$START_N\", \"priority\": 1, \"action\": \"./start.sh\", \"param\": \"\" }"
 fi
 
-# 自动退出时间选项（值列表，秒）：01分 / 03分 / 05分 / 10分；当前项加 ✓（默认 05分）
-# 短档位覆盖多数使用场景，避免长时间挂机耗电；子项 exitmenu:false + refresh:true 选中后即时刷新
-T_VALS="60 180 300 600"
+# 定时退出选项（值列表，秒）：从不 / 03分 / 05分 / 10分；当前项加 ✓（默认 05分）
+# 第 5 项为「闲置退出」开关（1 分钟不传输即退出），与上面的定时档位彼此独立
+T_VALS="0 180 300 600"
+
+# 闲置退出开关标签：显示「将要执行的动作」，中文/英文各一套
+if [ -f IDLE ] && [ "$(cat IDLE 2>/dev/null)" = "off" ]; then
+	IDLEN="恢复闲置退出"; [ "$L" = "en" ] && IDLEN="Enable idle-exit"
+else
+	IDLEN="取消闲置退出"; [ "$L" = "en" ] && IDLEN="Disable idle-exit"
+fi
+
 TO=""
 for v in $T_VALS; do
 	l=$(tlabel "$v")
 	TO="$TO
 				{ \"name\": \"$(tick "$v" "$AUTOCLOSE")$l\", \"priority\": 1, \"action\": \"./timeout.sh $v $l\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true },"
 done
+TO="$TO
+				{ \"name\": \"$IDLEN\", \"priority\": 5, \"action\": \"./idletoggle.sh\", \"param\": \"\", \"exitmenu\": false, \"refresh\": true }"
 TO=$(printf '%s' "$TO" | sed '$ s/,$//')
 
 # “更新核心程序”菜单项（依校验状态）

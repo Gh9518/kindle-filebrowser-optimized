@@ -5,6 +5,8 @@
 # 结束 filebrowser
 ps aux | grep [f]ilebrowser | awk '{print $2}' | xargs -i kill {} 2>/dev/null
 killall filebrowser 2>/dev/null
+# 结束自动退出守护，避免服务关闭后残留的定时器再次触发
+for p in $(ps aux 2>/dev/null | grep -E '[i]dle.sh|[a]utoclose.sh' | awk '{print $2}'); do kill "$p" 2>/dev/null; done
 lipc-set-prop -i com.lab126.powerd preventScreenSaver 0 2>/dev/null
 
 # 还原飞行模式：仅当“启动时处于飞行模式”，才在退出时重新开启；
