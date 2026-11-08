@@ -21,10 +21,15 @@ status() {
 }
 
 # 在屏幕显示本机 IP（位置可改下方 IP_ROW / IP_COL；改这里即全局生效）
+# eips 无中文字形，未连接时显示英文占位，避免屏显乱码；联网后由 idle.sh 守护自动刷新为真实 IP
 IP_ROW=12  # 第几行显示（越大越靠下）
 IP_COL=3   # 第几列显示（越大越靠右）
 show_ip() {
-	eips $IP_ROW $IP_COL "IP: $(ip_addr)"
+	ip=$(ip_addr)
+	case "$ip" in
+		未连接|"") eips $IP_ROW $IP_COL "IP: ---" ;;
+		*)          eips $IP_ROW $IP_COL "IP: $ip" ;;
+	esac
 }
 
 # 完全脱离终端后台运行（避免 KUAL 关闭其管道后被 SIGPIPE 拖垮崩溃）
