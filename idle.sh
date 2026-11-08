@@ -10,6 +10,10 @@
 #     解决「先无网后联网、IP 不刷新」的问题。IP 变化（DHCP 续租等）也会再次刷新。
 #   - 空闲计时只统计「已联网」阶段的连续无传输：无网等待期不计入，联网瞬间重置基线，
 #     因此不会把「无网等待」误算成空闲而到点自动退出。
+#   - 【v2.0.7】无网络超时：连续 OFFLINE_MAX（默认 120 秒 / 2 分钟）始终拿不到 IP 时自动退出，
+#     避免无网状态下无限等待、屏幕常亮空耗电。计时只在无网轮次累加，联网立即清零
+#     （「无网→联网→再断网」会重新等满 2 分钟）。「从不」档位表示关闭自动退出，此超时同样不生效。
+#     触发时与「无传输退出」一样调用 sh ./stop.sh，完整复用飞行模式还原逻辑。
 # 判定「传输」：读 iptables 中 --dpt 80 规则的累计计数（只统计访问本服务的流量）。
 #   Kindle 后台联网、以及「启动时飞行模式→临时开网 / 退出时还原」的 WiFi 开关都不会计入。
 #   规则不可用时退化为统计非 lo 网卡字节并加阈值过滤噪声。
@@ -21,9 +25,10 @@
 cd "$(dirname "$0")" || exit 1
 . ./lib.sh
 
-STEP=${IDLE_STEP:-3}             # 采样间隔（秒）；测试时可用环境变量缩短
-BOOT_WAIT=${IDLE_BOOT_WAIT:-3}   # 启动后等桌面重绘稳定再补写首帧（秒）
-DEV_MIN=$(( 4096 * STEP / 10 ))  # fallback 噪声阈值按采样窗口等比缩放（原 10 秒窗口为 4096 字节）
+STEP=${IDLE_STEP:-3}                    # 采样间隔（秒）；测试时可用环境变量缩短
+BOOT_WAIT=${IDLE_BOOT_WAIT:-3}          # 启动后等桌面重绘稳定再补写首帧（秒）
+OFFLINE_MAX=${IDLE_OFFLINE_MAX:-120}    # 连续无网络多久后自动退出（秒，默认 2 分钟）；0=禁用；测试可覆盖
+DEV_MIN=$(( 4096 * STEP / 10 ))         # fallback 噪声阈值按采样窗口等比缩放（原 10 秒窗口为 4096 字节）
 
 # 读取当前「连续无传输多少秒后退出」；空/非法值默认 60（1 分），0 表示「从不」
 read_secs() {
@@ -67,6 +72,7 @@ listening() {
 sleep "$BOOT_WAIT"
 prev=$(sample)
 quiet=0
+offline=0                    # 连续「未联网」累计秒数；一旦联网立即清零
 last_ip=""                   # 上一次显示的 IP；用于检测「无网→联网」/IP 变化以刷新屏显
 first=1
 while :; do
@@ -75,16 +81,27 @@ while :; do
 	if [ "$first" = "1" ]; then first=0; boot=1; else sleep "$STEP"; boot=0; fi
 	listening || exit 0
 
-	# —— 本机 IP 屏显刷新 ——
+	SECS=$(read_secs)            # 本轮档位（每轮重读，菜单改档即时生效）
 	ip=$(ip_addr)
+
+	# —— 无网络：等待联网，连续 OFFLINE_MAX 秒仍无网络则自动退出 ——
+	# 「从不」(AUTOCLOSE=0) 表示关闭自动退出功能，此时无网超时同样不生效
 	case "$ip" in
 		未连接|"")
-			# 尚未联网：不计入空闲、刷新传输基线；屏幕给出英文提示（eips 无中文字形），避免误以为程序故障
-			quiet=0; prev=$(sample)
+			quiet=0; prev=$(sample)   # 无网等待不计入空闲、刷新传输基线
 			if [ "$last_ip" != "WAIT" ]; then status "Waiting for network..."; last_ip="WAIT"; fi
+			[ "$boot" = "1" ] || offline=$(( offline + STEP ))   # 首轮与上一轮无间隔，不计入
+			if [ "$SECS" -gt 0 ] 2>/dev/null && [ "$OFFLINE_MAX" -gt 0 ] && [ "$offline" -ge "$OFFLINE_MAX" ]; then
+				status "No network $(( OFFLINE_MAX / 60 ))min, closing..."; sleep 1
+				sh ./stop.sh          # 与手动「关闭」共用出口，完整还原飞行模式
+				exit 0
+			fi
 			continue
 			;;
 	esac
+
+	# —— 已联网：刷新屏显 ——
+	offline=0                    # 网络恢复，无网等待重新计时
 	if [ "$ip" != "$last_ip" ]; then
 		show_ip
 		[ "$last_ip" = "WAIT" ] && status ""   # 联网后清除“等待联网”提示，避免残留
@@ -95,7 +112,6 @@ while :; do
 	[ "$boot" = "1" ] && { quiet=0; prev=$(sample); continue; }
 
 	# —— 空闲(无传输)计时：仅在「已联网」时才计数 ——
-	SECS=$(read_secs)
 	# 「从不」= 关闭此功能（等价旧版「取消闲置退出」）：清空计时、刷新基线、继续待命，不判定不退出
 	if [ "$SECS" -le 0 ] 2>/dev/null; then
 		quiet=0; prev=$(sample); continue
