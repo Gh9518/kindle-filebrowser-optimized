@@ -15,11 +15,15 @@
 #   规则不可用时退化为统计非 lo 网卡字节并加阈值过滤噪声。
 # 与飞行模式的关系：本脚本不直接动网络；触发时调用 stop.sh，由 stop.sh 依据启动时写入的
 #   WIFI_STATE 决定是否重新开启飞行模式，保证「自动退出」与「手动关闭」还原行为一致。
+#
+# 【提速 v2.0.6】采样间隔 10s → 3s，且启动后首轮不等间隔立即检测一次：
+#   「无网→联网」时 IP 屏显最多 3 秒即刷新（旧版要等满 10 秒一轮），自动退出精度也从 ±10s 提到 ±3s。
 cd "$(dirname "$0")" || exit 1
 . ./lib.sh
 
-STEP=${IDLE_STEP:-10}        # 采样间隔（秒）；测试时可用环境变量缩短
-DEV_MIN=4096                 # fallback 模式：采样间隔内字节增量超过此值才算「有传输」
+STEP=${IDLE_STEP:-3}             # 采样间隔（秒）；测试时可用环境变量缩短
+BOOT_WAIT=${IDLE_BOOT_WAIT:-3}   # 启动后等桌面重绘稳定再补写首帧（秒）
+DEV_MIN=$(( 4096 * STEP / 10 ))  # fallback 噪声阈值按采样窗口等比缩放（原 10 秒窗口为 4096 字节）
 
 # 读取当前「连续无传输多少秒后退出」；空/非法值默认 60（1 分），0 表示「从不」
 read_secs() {
@@ -58,16 +62,20 @@ listening() {
 	return 1
 }
 
+# 等桌面重绘稳定（start.sh 会触发 powerButtonPressed 回桌面），避免首帧 eips 被覆盖；
+# 此后首轮立即检测，联网后最快 3 秒就能刷出 IP
+sleep "$BOOT_WAIT"
 prev=$(sample)
 quiet=0
 last_ip=""                   # 上一次显示的 IP；用于检测「无网→联网」/IP 变化以刷新屏显
+first=1
 while :; do
-	sleep "$STEP"
+	# 首轮立即检测（不等 STEP），之后每轮先等待；
+	# sleep 放在循环开头，保证下面未联网 / 「从不」等分支的 continue 不会跳过等待造成忙等
+	if [ "$first" = "1" ]; then first=0; boot=1; else sleep "$STEP"; boot=0; fi
 	listening || exit 0
 
 	# —— 本机 IP 屏显刷新 ——
-	# 未连接时只提示等待、清空空闲计时（见下），不调用 show_ip；
-	# 一旦拿到 IP（含 IP 变化）即刷新 eips 屏显。
 	ip=$(ip_addr)
 	case "$ip" in
 		未连接|"")
@@ -82,6 +90,9 @@ while :; do
 		[ "$last_ip" = "WAIT" ] && status ""   # 联网后清除“等待联网”提示，避免残留
 		last_ip="$ip"
 	fi
+
+	# 首轮与基线几乎无时间间隔，只重置基线不累计空闲，避免计时偏快一个采样周期
+	[ "$boot" = "1" ] && { quiet=0; prev=$(sample); continue; }
 
 	# —— 空闲(无传输)计时：仅在「已联网」时才计数 ——
 	SECS=$(read_secs)

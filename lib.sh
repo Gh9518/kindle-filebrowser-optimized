@@ -42,6 +42,20 @@ detach() {
 	fi
 }
 
+# 短轮询等待（v2.0.6 提速用）：把「固定 sleep 1~3 秒」改成「0.2 秒粒度探一次、条件满足立刻走」。
+# 新固件 busybox 的 sleep 支持小数；老固件不支持时自动退化为 1 秒，逻辑不变只是略慢。
+# 首次调用做一次探测并缓存粒度(NAP_T)与每秒轮询次数(NAP_N)；探测用 10ms 极短 sleep，几乎不耗时，
+# 且全局只做一次，避免每个轮询都白等一次。测试时也可 export NAP_T / NAP_N 直接指定，跳过探测。
+NAP_T=""
+NAP_N=1
+nap() {
+	if [ -z "$NAP_T" ]; then
+		if sleep 0.01 2>/dev/null; then NAP_T=0.2; NAP_N=5; else NAP_T=1; NAP_N=1; fi
+		return 0
+	fi
+	sleep "$NAP_T"
+}
+
 # 读取当前无线状态：1=无线开(非飞行模式) 0=飞行模式(无线关) 读不到默认 1
 wireless_state() {
 	st=$(lipc-get-prop com.lab126.cmd wirelessEnable 2>/dev/null)
