@@ -103,8 +103,18 @@ while :; do
 	# —— 已联网：刷新屏显 ——
 	offline=0                    # 网络恢复，无网等待重新计时
 	if [ "$ip" != "$last_ip" ]; then
-		show_ip
-		[ "$last_ip" = "WAIT" ] && status ""   # 联网后清除“等待联网”提示，避免残留
+		# 【v2.0.8 修复：联网后 IP 一闪就消失】status "" 会用 42 个空格刷满整行，
+		# 旧顺序把它放在 show_ip 之后，等于刚把 IP 写上就立刻擦掉；此后 IP 未变化
+		# 便不再进入本分支重写，IP 就永久消失。改为「先清提示、再写 IP」，
+		# 让 show_ip 成为最后一次写屏；联网瞬间常伴随 WiFi/框架重绘，再补写一帧。
+		if [ "$last_ip" = "WAIT" ]; then
+			status ""            # 先清掉“Waiting for network...”提示（刷整行空格）
+			show_ip
+			sleep 1              # 与 start.sh 一致：隔 1 秒补写，兜住较晚的屏幕重绘
+			show_ip
+		else
+			show_ip              # 启动即有网 / IP 变化：保持原有单次刷新，逻辑不变
+		fi
 		last_ip="$ip"
 	fi
 

@@ -1,6 +1,6 @@
 # Kindle 的 filebrowser 优化（网页文件管理器 2）/ Kindle filebrowser optimization (Web File Browser 2)
 
-> 当前版本：**2.0.7**。版本规则：功能更新递增小版本号；多次小修小改累积后也可递增一次小版本号（2.0 → 2.0.1 → … → 2.0.7 …）。中文标题「网页文件管理器 2」固定不变，不随版本号变动。
+> 当前版本：**2.0.8**。版本规则：功能更新递增小版本号；多次小修小改累积后也可递增一次小版本号（2.0 → 2.0.1 → … → 2.0.8 …）。中文标题「网页文件管理器 2」固定不变，不随版本号变动。
 
 基于 [filebrowser](https://github.com/filebrowser/filebrowser) 的 Kindle（KUAL）网页文件管理器插件，可在手机、平板或电脑的浏览器中管理 Kindle 里的文件。本插件的原始方案与思路源自书伴（BookFere）文章 [《File Browser：便捷地管理 Kindle 中的文件》](https://bookfere.com/post/823.html)。核心程序已内置打包（v2.63.23，armv7），开箱即用，并支持在线更新。
 
