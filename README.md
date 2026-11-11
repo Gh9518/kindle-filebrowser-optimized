@@ -96,6 +96,17 @@
 - 升级核心版本后启动失败：可删除 `filebrowser.db` 重新「启动」，filebrowser 会自动重建配置。
 - **无法访问排查**：浏览器务必用 `http://<IP>:80`（不要写 `https://`）；启动脚本已先完成端口就绪检测才显示 IP，看到 IP 时服务即已监听；若仍连不上，启动后屏幕会显示 `Err: …`（取自 `/tmp/filebrowser.log`），常见原因：① 本题 Kindle 架构与 `filebrowser`(armv7) 不符导致无法执行；② 防火墙/网络不在同一网段；③ 端口被其它程序占用。
 
+## 相关项目：KOReader 快捷方式插件（推荐）
+
+如果你也用 **KOReader** 看书，推荐搭配使用本项目的 **KOReader 快捷方式插件 `kofb.koplugin`**：
+
+- 仓库地址：<https://github.com/Gh9518/kofb.koplugin>
+- 作用：在 KOReader 内**一键启动 / 关闭**「网页文件管理器 2」，**不用退出 KOReader** 即可通过浏览器无线传书、管理文件；IP 直接显示在菜单「启动」右侧。
+- 特点：**不另装一套 filebrowser**——它只是本扩展包的快捷方式，直接复用这里已内置的核心程序，因此额外占用极小、且随本扩展包升级而自动适配。
+- 依赖前提：需先安装本 KUAL 扩展包「网页文件管理器 2」并让核心程序就位（详见该插件仓库说明）。
+
+> 适合想在 KOReader 前台一边看书、一边随时传文件的场景。
+
 ## 致谢 / Acknowledgements
 
 - 书伴（BookFere）文章：[《File Browser：便捷地管理 Kindle 中的文件》](https://bookfere.com/post/823.html) —— 本插件（由 Sparkle 投稿）的原始介绍与思路来源，特此致谢。
