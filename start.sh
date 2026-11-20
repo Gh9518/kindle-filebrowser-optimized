@@ -59,11 +59,17 @@ for p in $(ps aux 2>/dev/null | grep -E '[i]dle.sh|[a]utoclose.sh' | awk '{print
 # 仅当 80 端口仍被旧进程占着才等它释放；无残留时 0 秒通过（不再固定 sleep 2）
 wait_for 3 port_gone
 
-# 放行 80 端口入站（部分 Kindle 固件默认拦截入站连接）
-# 该规则同时作为「自动退出」判定传输的计数器，故只在不存在时插入，避免重复堆积
+# 放行 80 端口（部分 Kindle 固件默认拦截入站连接）+ 建立「自动退出」传输计数规则：
+#   INPUT  dpt:80 —— 计数请求与上传、并放行入站；
+#   OUTPUT spt:80 —— 计数下载响应（v2.0.9 新增：纯下载是出站，缺它则传输中被误判无传输而误关）。
+# 两条都只在规则不存在时插入，避免重复堆积分散计数。
 if ! iptables -L INPUT -n 2>/dev/null | grep -q 'dpt:80'; then
 	iptables -I INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null || \
 		/sbin/iptables -I INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null
+fi
+if ! iptables -L OUTPUT -n 2>/dev/null | grep -q 'spt:80'; then
+	iptables -I OUTPUT -p tcp --sport 80 -j ACCEPT 2>/dev/null || \
+		/sbin/iptables -I OUTPUT -p tcp --sport 80 -j ACCEPT 2>/dev/null
 fi
 
 # 后台启动：v2.63.23 无 serve 子命令；--noauth 免登录（对已有 db 同样生效）；-d 显式指定数据库
