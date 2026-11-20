@@ -40,9 +40,22 @@ read_secs() {
 }
 
 # 采样：优先返回 80 端口计数字符串（如 "12_1865"）；无该规则时返回 DEV<总字节>
-# 用字符串比较而非数值，规避不同 iptables 版本把计数显示成 "2K" 这类后缀
+# 用字符串比较而非数值，规避不同 iptables 版本把计数显示成 "2K" 这类后缀。
+# 【双向统计，v2.0.9 修复】必须同时统计：
+#   INPUT  dpt:80 —— 浏览器请求 + 上传文件；
+#   OUTPUT spt:80 —— 下载响应（Go 的 filebrowser 下载走 sendfile 零拷贝，进程 IO 不计入，
+#                     且纯下载是出站流量，只看入站会漏判 → 传输中仍到点误关）。
+# 只看入站时「从 Kindle 下载大文件」会被误判无传输，正是本次修复的现象。
+# 用一条 iptables -L 取两张链，仅 1 次 fork（不增加低内存设备负担）。
 sample() {
-	c=$(iptables -L INPUT -n -v 2>/dev/null | awk '/dpt:80/{printf "%s_%s", $1, $2}')
+	c=$(iptables -L -n -v 2>/dev/null | awk '
+		/^Chain INPUT/  { cin=1; cout=0; next }
+		/^Chain OUTPUT/ { cin=0; cout=1; next }
+		/^Chain/        { cin=0; cout=0; next }
+		cin  && /dpt:80/ { ip=$1; ib=$2 }
+		cout && /spt:80/ { op=$1; ob=$2 }
+		END { if (ip||op) printf "%s_%s", (ip+0)+(op+0), (ib+0)+(ob+0) }
+	')
 	[ -n "$c" ] && { echo "$c"; return; }
 	awk 'NR>2 && $1 !~ /lo:/ {s+=$2+$10} END{printf "DEV%d", s+0}' /proc/net/dev
 }
